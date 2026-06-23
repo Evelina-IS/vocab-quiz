@@ -72,8 +72,18 @@ const API_BASE = window.location.origin;  // 同域名部署，自动适配
 
 <div class="container">
   <header>
-    <h1>📝 大学英语四级默写</h1>
-    <p>共 720 个单词 · 本地存储</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <h1 style="font-size:22px;">📝 大英四默写</h1>
+      <div id="authArea">
+        <button id="loginBtn" onclick="githubLogin()" style="padding:6px 14px;border-radius:8px;border:1px solid #d0d5dd;background:#fff;cursor:pointer;font-size:13px;">🔑 GitHub 登录</button>
+        <div id="userInfo" style="display:none;align-items:center;gap:8px;">
+          <img id="userAvatar" src="" style="width:32px;height:32px;border-radius:50%;">
+          <span id="userName" style="font-size:14px;font-weight:500;"></span>
+          <button onclick="githubLogout()" style="padding:4px 10px;border-radius:6px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:12px;">退出</button>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:14px;color:#666;margin-top:4px;">共 720 个单词 · 云端同步</p>
   </header>
 
   <!-- Stats -->
