@@ -254,14 +254,7 @@ async function getWordStatus(seq) {
   return p[String(seq)] || null;
 }
 
-function setWordStatus(seq, status) {
-  const p = loadProgress();
-  const key = String(seq);
-  if (!p[key]) p[key] = { count: 0 };
-  p[key].status = status;
-  p[key].count = (p[key].count || 0) + 1;
-  saveProgress(p);
-}
+
 
 function clearAllProgress() {
   localStorage.removeItem('vocab_progress_v2');
