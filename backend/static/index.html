@@ -110,6 +110,9 @@ const API_BASE = window.location.origin;  // 同域名部署，自动适配
       <option value="cn2en">看中文 → 写英文</option>
       <option value="en2cn">看英文 → 写中文</option>
     </select>
+    <label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:0 4px;">
+      <input type="checkbox" id="showHint" checked> 首字母提示
+    </label>
     <button onclick="startDictation()" id="btnStart">开始默写</button>
     <button class="btn-secondary" onclick="exportWrong()" id="btnExport">📤 导出错题</button>
     <button class="btn-danger" onclick="clearData()" id="btnClear">🗑 清除记录</button>
@@ -122,6 +125,7 @@ const API_BASE = window.location.origin;  // 同域名部署，自动适配
       <div class="hint" id="dictHint">输入完成后按 Enter 或点击提交</div>
     </div>
     <div class="word-display" id="displayWord">—</div>
+    <div id="hintDisplay" style="text-align:center;font-size:14px;color:#8e44ad;margin-top:6px;min-height:22px;"></div>
     <div class="input-area">
       <input type="text" id="answerInput" placeholder="在此输入..." autocomplete="off" onkeydown="if(event.key==='Enter') submitAnswer()">
       <button onclick="submitAnswer()">提交</button>
@@ -377,8 +381,23 @@ function showCurrentWord() {
   const word = words[idx];
   const direction = state.direction;
   const showMeaning = direction === 'cn2en';
+
+  // 显示题目
   $('displayWord').textContent = showMeaning ? word.meaning : word.word;
   $('displayWord').className = 'word-display' + (showMeaning ? '' : ' meaning-only');
+
+  // 首字母提示
+  const hintEnabled = document.getElementById('showHint').checked;
+  const hintEl = document.getElementById('hintDisplay');
+  if (hintEnabled && direction === 'cn2en') {
+    // 看中文写英文时，提示英文的首字母
+    const firstLetter = word.word.charAt(0).toUpperCase();
+    hintEl.textContent = '💡 首字母: ' + firstLetter;
+    hintEl.style.display = 'block';
+  } else {
+    hintEl.style.display = 'none';
+  }
+
   $('answerInput').value = '';
   $('answerInput').className = '';
   $('answerInput').disabled = false;
