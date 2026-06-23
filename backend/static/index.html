@@ -176,26 +176,32 @@ let state = {
 let cachedProgress = null;
 
 async function loadProgress() {
-  // 优先从云端获取
-  try {
-    const res = await fetch(API_BASE + '/api/progress', { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
-      cachedProgress = data;
-      // 同步备份到 localStorage
-      localStorage.setItem('vocab_progress_backup', JSON.stringify(data));
-      return data;
-    }
-  } catch(e) {
-    console.warn('云端获取失败，尝试本地备份');
-  }
-  // 降级：从 localStorage 读取
+  // === 重点：优先从 localStorage 读取（离线可用）===
   if (cachedProgress) return cachedProgress;
   try {
     const raw = localStorage.getItem('vocab_progress_backup');
     if (raw) {
       const data = JSON.parse(raw);
       cachedProgress = data;
+      return data;
+    }
+  } catch(e) {}
+  // 尝试从云端获取（登录后自动合并）
+  try {
+    const res = await fetch(API_BASE + '/api/progress', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      // 合并云端和本地数据（云端优先）
+      const localRaw = localStorage.getItem('vocab_progress_backup');
+      if (localRaw) {
+        const local = JSON.parse(localRaw);
+        // 合并：云端有就取云端，没有就取本地
+        for (const k of Object.keys(local)) {
+          if (!data[k]) data[k] = local[k];
+        }
+      }
+      cachedProgress = data;
+      localStorage.setItem('vocab_progress_backup', JSON.stringify(data));
       return data;
     }
   } catch(e) {}
@@ -208,7 +214,7 @@ async function saveProgress(progress) {
 }
 
 async function setWordStatus(seq, status) {
-  // 不管是否登录，直接读写 localStorage（不依赖 cachedProgress）
+  // === 重点：先写 localStorage，不管云端 ===
   let progress = {};
   try {
     const raw = localStorage.getItem('vocab_progress_backup');
@@ -219,19 +225,15 @@ async function setWordStatus(seq, status) {
   progress[key].status = status;
   progress[key].count = (progress[key].count || 0) + 1;
   localStorage.setItem('vocab_progress_backup', JSON.stringify(progress));
-  // 更新内存缓存
+  // 更新内存缓存，让后续 loadProgress 能读到
   cachedProgress = progress;
-  // 再尝试同步到云端（未登录时静默失败）
-  try {
-    await fetch(API_BASE + '/api/progress', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word_seq: seq, status: status })
-    });
-  } catch(e) {
-    console.warn('云端同步失败（未登录？），数据已保存在本地');
-  }
+  // 云端同步（不 await，不阻塞）
+  fetch(API_BASE + '/api/progress', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ word_seq: seq, status: status })
+  }).catch(e => {});  // 静默失败
 }
 
 async function clearAllProgress() {
