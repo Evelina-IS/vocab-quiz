@@ -8,7 +8,7 @@ api = Blueprint('api', __name__)
 @api.route('/auth/github')
 def github_login():
     client_id = current_app.config['GITHUB_CLIENT_ID']
-    redirect_uri = request.host_url.rstrip('/') + '/api/auth/github/callback'
+    redirect_uri = 'https://' + request.host + '/api/auth/github/callback'
     return redirect(
         f'https://github.com/login/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&scope=read:user'
     )
