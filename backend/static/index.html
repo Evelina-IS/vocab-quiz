@@ -126,6 +126,7 @@ const API_BASE = window.location.origin;  // 同域名部署，自动适配
     </div>
     <div class="word-display" id="displayWord">—</div>
     <div id="hintDisplay" style="text-align:center;font-size:14px;color:#8e44ad;margin-top:6px;min-height:22px;"></div>
+    <div id="retryTag" style="text-align:center;font-size:13px;color:#e67e22;margin-top:2px;min-height:20px;"></div>
     <div class="input-area">
       <input type="text" id="answerInput" placeholder="在此输入..." autocomplete="off" onkeydown="if(event.key==='Enter') submitAnswer()">
       <button onclick="submitAnswer()">提交</button>
@@ -360,6 +361,8 @@ function startSession(words, mode) {
   state.sessionComplete = false;
   state.direction = $('directionSelect').value;
   state.mode = mode;
+  // 本轮已答过的单词（答对答错都算），用于跳过重复
+  state.seenWords = new Set();
   showCurrentWord();
 }
 
@@ -378,7 +381,28 @@ function showCurrentWord() {
     finishSession();
     return;
   }
-  const word = words[idx];
+
+  // 跳过本轮已经做过的单词（答对的跳过，答错的继续考）
+  let currentIdx = idx;
+  while (currentIdx < words.length) {
+    const w = words[currentIdx];
+    // 如果这个词已经答对过了，跳过
+    if (w._answeredCorrect) {
+      currentIdx++;
+      state.answeredCount++; // 算作已处理
+      continue;
+    }
+    break;
+  }
+
+  if (currentIdx >= words.length) {
+    state.currentIndex = words.length;
+    finishSession();
+    return;
+  }
+
+  state.currentIndex = currentIdx;
+  const word = words[currentIdx];
   const direction = state.direction;
   const showMeaning = direction === 'cn2en';
 
@@ -386,11 +410,19 @@ function showCurrentWord() {
   $('displayWord').textContent = showMeaning ? word.meaning : word.word;
   $('displayWord').className = 'word-display' + (showMeaning ? '' : ' meaning-only');
 
+  // 如果这是重考的错题，显示标记
+  const retryTag = document.getElementById('retryTag');
+  if (word._retryCount && word._retryCount > 0) {
+    retryTag.textContent = '🔄 错题重考 (' + word._retryCount + '/' + word._maxRetries + ')';
+    retryTag.style.display = 'block';
+  } else {
+    retryTag.style.display = 'none';
+  }
+
   // 首字母提示
   const hintEnabled = document.getElementById('showHint').checked;
   const hintEl = document.getElementById('hintDisplay');
   if (hintEnabled && direction === 'cn2en') {
-    // 看中文写英文时，提示英文的首字母
     const firstLetter = word.word.charAt(0).toUpperCase();
     hintEl.textContent = '💡 首字母: ' + firstLetter;
     hintEl.style.display = 'block';
@@ -437,7 +469,10 @@ async function submitAnswer() {
     state.sessionResults[idx] = 'correct';
     state.totalCorrect++;
     await setWordStatus(word.seq, 'correct');
-    // 正确：1.2s 后继续
+    // 答对了：标记为已掌握，不再出现
+    word._answeredCorrect = true;
+    state.answeredCount++;
+    // 1.2s 后继续
     advanceDelay = 1200;
   } else {
     input.className = 'wrong';
@@ -446,22 +481,13 @@ async function submitAnswer() {
     $('feedback').className = 'feedback wrong';
     state.sessionResults[idx] = 'wrong';
     state.totalWrong++;
+    state.answeredCount++;
     await setWordStatus(word.seq, 'wrong');
-    // 错误：把这个单词重新插入到列表后面，稍后再考一次
-    // 最多重试3次防止死循环
-    const retryCount = word._retryCount || 0;
-    if (retryCount < 3) {
-      const retryWord = { ...word, _retryCount: retryCount + 1 };
-      // 插入到当前索引后 3 个位置（留几个新词缓冲）
-      const insertPos = Math.min(state.currentIndex + 3, state.sessionWords.length);
-      state.sessionWords.splice(insertPos, 0, retryWord);
-      state.sessionResults.splice(insertPos, 0, 'pending');
-    }
-    // 错误：3s 后继续（给更多时间看正确答案）
+    // 错误：自动加入错题本（云端已保存），本轮不再重考
+    // 但会停留在 3 秒让看正确答案
     advanceDelay = 3000;
   }
 
-  state.answeredCount++;
   const done = state.answeredCount;
   const total = state.sessionWords.length;
   $('progressText').textContent = done + ' / ' + total;
