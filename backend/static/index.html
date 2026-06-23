@@ -175,11 +175,25 @@ let state = {
 let cachedProgress = null;
 
 async function loadProgress() {
-  if (cachedProgress) return cachedProgress;
+  // 优先从云端获取
   try {
     const res = await fetch(API_BASE + '/api/progress', { credentials: 'include' });
     if (res.ok) {
       const data = await res.json();
+      cachedProgress = data;
+      // 同步备份到 localStorage
+      localStorage.setItem('vocab_progress_backup', JSON.stringify(data));
+      return data;
+    }
+  } catch(e) {
+    console.warn('云端获取失败，尝试本地备份');
+  }
+  // 降级：从 localStorage 读取
+  if (cachedProgress) return cachedProgress;
+  try {
+    const raw = localStorage.getItem('vocab_progress_backup');
+    if (raw) {
+      const data = JSON.parse(raw);
       cachedProgress = data;
       return data;
     }
@@ -193,6 +207,15 @@ async function saveProgress(progress) {
 }
 
 async function setWordStatus(seq, status) {
+  // 不管是否登录，先写本地
+  if (cachedProgress) {
+    const key = String(seq);
+    if (!cachedProgress[key]) cachedProgress[key] = { count: 0 };
+    cachedProgress[key].status = status;
+    cachedProgress[key].count = (cachedProgress[key].count || 0) + 1;
+    localStorage.setItem('vocab_progress_backup', JSON.stringify(cachedProgress));
+  }
+  // 再尝试同步到云端（未登录时静默失败）
   try {
     await fetch(API_BASE + '/api/progress', {
       method: 'POST',
@@ -200,15 +223,8 @@ async function setWordStatus(seq, status) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ word_seq: seq, status: status })
     });
-    // 更新缓存
-    if (cachedProgress) {
-      const key = String(seq);
-      if (!cachedProgress[key]) cachedProgress[key] = { count: 0 };
-      cachedProgress[key].status = status;
-      cachedProgress[key].count = (cachedProgress[key].count || 0) + 1;
-    }
   } catch(e) {
-    console.error('Failed to save progress:', e);
+    console.warn('云端同步失败（未登录？），数据已保存在本地');
   }
 }
 
@@ -597,6 +613,8 @@ async function checkAuth() {
       info.style.display = 'flex';
       document.getElementById('userAvatar').src = data.avatar_url;
       document.getElementById('userName').textContent = data.username;
+      // 登录成功后重新从云端拉取进度
+      cachedProgress = null;
     } else {
       document.getElementById('loginBtn').style.display = '';
       document.getElementById('userInfo').style.display = 'none';
@@ -604,6 +622,9 @@ async function checkAuth() {
   } catch(e) {
     console.error('Auth check failed:', e);
   }
+  // 无论是否登录，都加载进度（本地备份兜底）
+  await loadProgress();
+  await updateStats();
 }
 
 function githubLogin() {
