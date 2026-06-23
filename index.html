@@ -495,6 +495,8 @@ async function submitAnswer() {
     state.answeredCount++;
     // 1.2s 后继续
     advanceDelay = 1200;
+    // 实时更新顶部统计
+    await updateStats();
   } else {
     input.className = 'wrong';
     const displayCorrect = direction === 'cn2en' ? word.word + ' — ' + word.meaning : word.meaning + ' — ' + word.word;
@@ -507,6 +509,8 @@ async function submitAnswer() {
     // 错误：自动加入错题本（云端已保存），本轮不再重考
     // 但会停留在 3 秒让看正确答案
     advanceDelay = 3000;
+    // 实时更新顶部统计
+    await updateStats();
   }
 
   const done = state.answeredCount;
