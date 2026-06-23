@@ -1,5 +1,6 @@
 # 📝 大英四单词默写
-> 纯前端单词默写工具 · 720个大英四核心词汇 · 浏览器本地存储
+
+> 纯前端单词默写工具 · 720个大英四核心词汇 · 支持 GitHub 云端同步
 
 ## 功能
 
@@ -9,35 +10,42 @@
 - **导出错题** — 一键导出错题列表为 `.txt` 文件
 - **单词表** — 查看所有单词及对应的默写状态（正确/错误/待默写）
 - **进度统计** — 总词数、已默写、正确数、错误数一目了然
-- **本地存储** — 所有进度保存在浏览器 localStorage，关闭页面不丢失
+- **云端同步** — 用 GitHub 登录，数据保存在服务器，换设备也不丢失
 
 ## 使用方式
 
-### 在线使用（推荐）
+### 在线使用
 
-访问 GitHub Pages：**[https://evelina-is.github.io/vocab-quiz](https://evelina-is.github.io/vocab-quiz)**
+访问部署地址（见下方部署指南）
 
-### 本地使用
+### 本地开发
 
 ```bash
-# 克隆仓库
-git clone https://github.com/Evelina-IS/vocab-quiz.git
+# 纯前端版（无后端，数据存浏览器）
+open index.html
 
-# 直接用浏览器打开
-open vocab-quiz/index.html
+# 完整版（有后端 + 云端同步）
+cd backend
+pip install -r requirements.txt
+cp .env.example .env
+# 编辑 .env 填入 GitHub OAuth 信息
+python app.py
 ```
 
-无需安装任何依赖，打开即用。
+## 部署
+
+详见 [SETUP.md](SETUP.md)
 
 ## 数据来源
 
-单词表基于《大英四考试大纲》核心词汇，共 720 个单词，分为 8 个单元。
+单词表基于大英四考试大纲核心词汇，共 720 个单词，分为 8 个单元。
 
 ## 技术栈
 
-- 纯 HTML + CSS + JavaScript
-- 无任何外部依赖
-- 数据存储在浏览器 localStorage
+- **前端**: 纯 HTML + CSS + JavaScript
+- **后端**: Flask + SQLAlchemy + SQLite
+- **认证**: GitHub OAuth
+- **部署**: Docker / Railway / Render
 
 ## License
 
