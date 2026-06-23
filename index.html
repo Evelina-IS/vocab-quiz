@@ -208,14 +208,19 @@ async function saveProgress(progress) {
 }
 
 async function setWordStatus(seq, status) {
-  // 不管是否登录，先写本地
-  if (cachedProgress) {
-    const key = String(seq);
-    if (!cachedProgress[key]) cachedProgress[key] = { count: 0 };
-    cachedProgress[key].status = status;
-    cachedProgress[key].count = (cachedProgress[key].count || 0) + 1;
-    localStorage.setItem('vocab_progress_backup', JSON.stringify(cachedProgress));
-  }
+  // 不管是否登录，直接读写 localStorage（不依赖 cachedProgress）
+  let progress = {};
+  try {
+    const raw = localStorage.getItem('vocab_progress_backup');
+    if (raw) progress = JSON.parse(raw);
+  } catch(e) {}
+  const key = String(seq);
+  if (!progress[key]) progress[key] = { count: 0 };
+  progress[key].status = status;
+  progress[key].count = (progress[key].count || 0) + 1;
+  localStorage.setItem('vocab_progress_backup', JSON.stringify(progress));
+  // 更新内存缓存
+  cachedProgress = progress;
   // 再尝试同步到云端（未登录时静默失败）
   try {
     await fetch(API_BASE + '/api/progress', {
