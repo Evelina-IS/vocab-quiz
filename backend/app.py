@@ -1,5 +1,5 @@
 import os, json
-from flask import Flask, send_from_directory, session
+from flask import Flask, send_from_directory
 from config import Config
 from models import db, User, Progress
 from routes import api
@@ -9,15 +9,15 @@ def create_app():
                 static_folder='static',
                 static_url_path='/static')
     app.config.from_object(Config)
-    app.permanent_session_lifetime = 3600 * 24 * 30  # 30 days
+    app.permanent_session_lifetime = 3600 * 24 * 30
 
     db.init_app(app)
     app.register_blueprint(api, url_prefix='/api')
 
     with app.app_context():
+        # Create tables if they don't exist (safe with checkfirst=True)
         db.create_all()
 
-    # Serve frontend
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_frontend(path):
