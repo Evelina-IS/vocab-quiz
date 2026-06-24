@@ -121,6 +121,9 @@ const API_BASE = window.location.origin;  // 同域名部署，自动适配
     <label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:0 4px;">
       <input type="checkbox" id="showHint" checked> 首字母提示
     </label>
+    <label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:0 4px;">
+      <input type="checkbox" id="includePhrase" checked> 包含短语
+    </label>
     <button onclick="startDictation()" id="btnStart">开始默写</button>
     <button class="btn-secondary" onclick="exportWrong()" id="btnExport">📤 导出错题</button>
     <button class="btn-danger" onclick="clearData()" id="btnClear">🗑 清除记录</button>
@@ -168,6 +171,9 @@ const API_BASE = window.location.origin;  // 同域名部署，自动适配
         <option value="correct">已掌握</option>
         <option value="wrong">错题</option>
       </select>
+      <label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="listIncludePhrase" checked onchange="renderWordList()"> 包含短语
+      </label>
       <span style="font-size:13px;color:#888;" id="listCountInfo"></span>
     </div>
     <div class="word-list" id="wordListContainer"></div>
@@ -333,6 +339,14 @@ async function getFilteredWords() {
   const unit = $('unitFilter').value;
   let list = getActiveWords();
   if (unit !== 'all') list = list.filter(w => String(w.unit) === unit);
+  // 短语筛选
+  const includePhrase = document.getElementById('includePhrase').checked;
+  if (!includePhrase) {
+    list = list.filter(w => {
+      const isPhrase = w.word.includes(' ') || w.word.includes('-') || w.word.includes('/') || w.word.includes("'");
+      return !isPhrase;
+    });
+  }
   if (state.mode === 'review') {
     const progress = await loadProgress();
     list = list.filter(w => {
@@ -647,6 +661,15 @@ async function renderWordList() {
   let list = getActiveWords();
   if (unit !== 'all') list = list.filter(w => String(w.unit) === unit);
   const progress = await loadProgress();
+  
+  // 短语筛选
+  const includePhrase = document.getElementById('listIncludePhrase').checked;
+  if (!includePhrase) {
+    list = list.filter(w => {
+      const isPhrase = w.word.includes(' ') || w.word.includes('-') || w.word.includes('/') || w.word.includes("'");
+      return !isPhrase;
+    });
+  }
   
   // 状态筛选
   const statusFilter = document.getElementById('listStatusFilter').value;
