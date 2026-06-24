@@ -149,3 +149,33 @@ def clear_progress():
     Progress.query.filter_by(user_id=user_id).delete()
     db.session.commit()
     return jsonify({'ok': True})
+
+
+@api.route('/admin/stats')
+def admin_stats():
+    """管理员统计 - 查看用户数据"""
+    from models import User, Progress
+    
+    user_count = User.query.count()
+    progress_count = Progress.query.count()
+    users = User.query.all()
+    
+    user_list = []
+    for u in users:
+        correct = Progress.query.filter_by(user_id=u.id, status='correct').count()
+        wrong = Progress.query.filter_by(user_id=u.id, status='wrong').count()
+        user_list.append({
+            'id': u.id,
+            'github_id': u.github_id,
+            'username': u.username,
+            'created_at': str(u.created_at)[:19] if u.created_at else '',
+            'correct': correct,
+            'wrong': wrong,
+            'total': correct + wrong,
+        })
+    
+    return jsonify({
+        'total_users': user_count,
+        'total_progress_records': progress_count,
+        'users': user_list,
+    })
