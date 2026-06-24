@@ -465,9 +465,11 @@ function showCurrentWord() {
   const phraseTag = isPhrase ? ' <span style="font-size:11px;color:#e67e22;border:1px solid #e67e22;border-radius:4px;padding:0 5px;margin-left:4px;">短语</span>' : '';
   
   if (showMeaning) {
-    $('displayWord').innerHTML = word.meaning + posTag + phraseTag;
+    // 看中文写英文：显示 中文释义 + 词性 + 短语标记
+    $('displayWord').innerHTML = word.meaning + ' ' + posTag + phraseTag;
   } else {
-    $('displayWord').innerHTML = word.word + posTag + phraseTag;
+    // 看英文写中文：显示 英文单词 + 词性 + 短语标记
+    $('displayWord').innerHTML = word.word + ' ' + posTag + phraseTag;
   }
   $('displayWord').className = 'word-display' + (showMeaning ? '' : ' meaning-only');
 
