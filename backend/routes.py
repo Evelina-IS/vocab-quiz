@@ -179,3 +179,29 @@ def admin_stats():
         'total_progress_records': progress_count,
         'users': user_list,
     })
+
+
+@api.route('/admin/progress')
+def admin_progress():
+    """导出所有用户的进度数据"""
+    from models import User, Progress
+    
+    records = Progress.query.all()
+    users = {u.id: u.username for u in User.query.all()}
+    
+    data = []
+    for r in records:
+        data.append({
+            'id': r.id,
+            'user_id': r.user_id,
+            'username': users.get(r.user_id, 'unknown'),
+            'word_seq': r.word_seq,
+            'status': r.status,
+            'count': r.count,
+            'updated_at': str(r.updated_at)[:19] if r.updated_at else '',
+        })
+    
+    return jsonify({
+        'total_records': len(data),
+        'records': data,
+    })
