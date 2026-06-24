@@ -3,6 +3,7 @@ from flask import Blueprint, redirect, request, session, jsonify, current_app
 from models import db, User, Progress
 
 api = Blueprint('api', __name__)
+admin_bp = Blueprint('admin', __name__)
 
 # ---------- GitHub OAuth ----------
 @api.route('/auth/github')
@@ -207,7 +208,7 @@ def admin_progress():
     })
 
 
-@api.route('/admin')
+@admin_bp.route('/admin')
 def admin_page():
     """管理后台页面"""
     from models import User, Progress
