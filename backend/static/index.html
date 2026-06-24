@@ -510,8 +510,14 @@ async function submitAnswer() {
     state.totalWrong++;
     state.answeredCount++;
     await setWordStatus(word.seq, 'wrong');
-    // 错误：自动加入错题本（云端已保存），本轮不再重考
-    // 但会停留在 3 秒让看正确答案
+    // 错误：自动插入到后面再考一次（最多 3 次）
+    const retryCount = word._retryCount || 0;
+    if (retryCount < 3) {
+      const retryWord = { ...word, _retryCount: retryCount + 1, _maxRetries: 3 };
+      const insertPos = Math.min(state.currentIndex + 3, state.sessionWords.length);
+      state.sessionWords.splice(insertPos, 0, retryWord);
+      state.sessionResults.splice(insertPos, 0, 'pending');
+    }
     advanceDelay = 3000;
     // 实时更新顶部统计
     await updateStats();
