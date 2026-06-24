@@ -205,3 +205,60 @@ def admin_progress():
         'total_records': len(data),
         'records': data,
     })
+
+
+@api.route('/admin')
+def admin_page():
+    """管理后台页面"""
+    from models import User, Progress
+    
+    users = User.query.all()
+    records = Progress.query.order_by(Progress.updated_at.desc()).limit(200).all()
+    
+    html = '<html><head><meta charset="utf-8"><title>管理后台</title>'
+    html += '<style>body{font-family:sans-serif;padding:20px;max-width:1200px;margin:0 auto;}'
+    html += 'table{border-collapse:collapse;width:100%;margin-top:10px;}'
+    html += 'th,td{border:1px solid #ddd;padding:8px;text-align:left;}'
+    html += 'th{background:#1a1a2e;color:#fff;}'
+    html += 'tr:nth-child(even){background:#f9f9f9;}'
+    html += '.correct{color:#27ae60;font-weight:bold;}'
+    html += '.wrong{color:#e74c3c;font-weight:bold;}'
+    html += 'h2{margin-top:30px;}</style></head><body>'
+    
+    html += f'<h1>📊 管理后台</h1>'
+    html += f'<p>用户数: {len(users)} | 进度记录: {Progress.query.count()}</p>'
+    
+    # 用户表
+    html += '<h2>👤 用户列表</h2>'
+    html += '<table><tr><th>ID</th><th>GitHub ID</th><th>用户名</th><th>注册时间</th><th>正确</th><th>错误</th><th>总数</th></tr>'
+    for u in users:
+        correct = Progress.query.filter_by(user_id=u.id, status='correct').count()
+        wrong = Progress.query.filter_by(user_id=u.id, status='wrong').count()
+        html += f'<tr><td>{u.id}</td><td>{u.github_id}</td><td>{u.username}</td><td>{str(u.created_at)[:19]}</td>'
+        html += f'<td class="correct">{correct}</td><td class="wrong">{wrong}</td><td>{correct+wrong}</td></tr>'
+    html += '</table>'
+    
+    # 进度记录表
+    html += '<h2>📝 进度记录（最近200条）</h2>'
+    html += '<table><tr><th>ID</th><th>用户</th><th>单词序号</th><th>状态</th><th>次数</th><th>时间</th></tr>'
+    
+    # 加载单词表
+    import json, os
+    words_path = os.path.join(os.path.dirname(__file__), 'words.json')
+    word_map = {}
+    if os.path.exists(words_path):
+        with open(words_path) as f:
+            for w in json.load(f):
+                word_map[w['seq']] = w['word']
+    
+    for r in records:
+        user_name = User.query.get(r.user_id).username if User.query.get(r.user_id) else 'unknown'
+        word_text = word_map.get(r.word_seq, str(r.word_seq))
+        status_class = 'correct' if r.status == 'correct' else 'wrong'
+        html += f'<tr><td>{r.id}</td><td>{user_name}</td><td>{word_text}</td>'
+        html += f'<td class="{status_class}">{r.status}</td><td>{r.count}</td>'
+        html += f'<td>{str(r.updated_at)[:19]}</td></tr>'
+    html += '</table>'
+    
+    html += '</body></html>'
+    return html
