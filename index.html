@@ -153,6 +153,15 @@ const API_BASE = window.location.origin;  // 同域名部署，自动适配
   <div class="card" id="listArea" style="display:none;">
     <h2>单词表</h2>
     <div class="hint">显示每个单词的默写状态</div>
+    <div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+      <select id="listStatusFilter" onchange="renderWordList()" style="padding:6px 10px;border-radius:8px;border:1px solid #d0d5dd;font-size:13px;">
+        <option value="all">全部</option>
+        <option value="unreviewed">未复习</option>
+        <option value="correct">已掌握</option>
+        <option value="wrong">错题</option>
+      </select>
+      <span style="font-size:13px;color:#888;" id="listCountInfo"></span>
+    </div>
     <div class="word-list" id="wordListContainer"></div>
   </div>
 </div>
@@ -616,8 +625,23 @@ async function renderWordList() {
   let list = getActiveWords();
   if (unit !== 'all') list = list.filter(w => String(w.unit) === unit);
   const progress = await loadProgress();
+  
+  // 状态筛选
+  const statusFilter = document.getElementById('listStatusFilter').value;
+  if (statusFilter !== 'all') {
+    list = list.filter(w => {
+      const p = progress[String(w.seq)];
+      if (statusFilter === 'unreviewed') return !p;
+      if (statusFilter === 'correct') return p && p.status === 'correct';
+      if (statusFilter === 'wrong') return p && p.status === 'wrong';
+      return true;
+    });
+  }
 
   let html = '';
+  // 更新计数
+  const totalCount = list.length;
+  document.getElementById('listCountInfo').textContent = '共 ' + totalCount + ' 个单词';
   list.forEach(w => {
     const p = progress[String(w.seq)];
     let statusClass = 'pending', statusText = '待默写';
