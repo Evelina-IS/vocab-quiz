@@ -127,6 +127,9 @@ const API_BASE = window.location.origin;  // 同域名部署，自动适配
     <div class="word-display" id="displayWord">—</div>
     <div id="hintDisplay" style="text-align:center;font-size:14px;color:#8e44ad;margin-top:6px;min-height:22px;"></div>
     <div id="retryTag" style="text-align:center;font-size:13px;color:#e67e22;margin-top:2px;min-height:20px;"></div>
+    <div style="text-align:center;margin-top:4px;min-height:28px;">
+      <button id="dictDeleteBtn" style="display:none;padding:4px 12px;border:none;border-radius:6px;background:#fee;color:#e74c3c;cursor:pointer;font-size:12px;">🗑 删除这个词</button>
+    </div>
     <div class="input-area">
       <input type="text" id="answerInput" placeholder="在此输入..." autocomplete="off" onkeydown="if(event.key==='Enter') submitAnswer()">
       <button onclick="submitAnswer()">提交</button>
@@ -414,6 +417,8 @@ function startSession(words, mode) {
   state.mode = mode;
   // 本轮已答过的单词（答对答错都算），用于跳过重复
   state.seenWords = new Set();
+  const delBtn = document.getElementById("dictDeleteBtn");
+  if (delBtn) delBtn.style.display = "none";
   showCurrentWord();
 }
 
@@ -491,6 +496,13 @@ function showCurrentWord() {
     hintEl.style.display = 'block';
   } else {
     hintEl.style.display = 'none';
+  }
+  
+  // 默写时显示删除按钮
+  const delBtn = document.getElementById('dictDeleteBtn');
+  if (delBtn) {
+    delBtn.style.display = 'inline-block';
+    delBtn.onclick = function() { if(confirm('确定删除这个词？')) { deleteWord(word.seq); switchMode('dictation'); startDictation(); } };
   }
 
   $('answerInput').value = '';
