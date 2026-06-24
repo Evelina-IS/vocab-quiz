@@ -236,6 +236,36 @@ async function setWordStatus(seq, status) {
   }).catch(e => {});  // 静默失败
 }
 
+// ---------- 删除词汇 ----------
+function getDeletedSeqs() {
+  try {
+    const raw = localStorage.getItem('vocab_deleted_seqs');
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function saveDeletedSeqs(seqs) {
+  localStorage.setItem('vocab_deleted_seqs', JSON.stringify(seqs));
+}
+
+function deleteWord(seq) {
+  if (!confirm('确定要删除这个单词吗？')) return;
+  const deleted = getDeletedSeqs();
+  if (!deleted.includes(seq)) {
+    deleted.push(seq);
+    saveDeletedSeqs(deleted);
+  }
+  // 刷新单词表
+  if (state.mode === 'list') renderWordList();
+  updateStats();
+}
+
+// 过滤掉已删除的单词
+function getActiveWords() {
+  const deleted = getDeletedSeqs();
+  return WORDS.filter(w => !deleted.includes(w.seq));
+}
+
 async function clearAllProgress() {
   try {
     await fetch(API_BASE + '/api/progress/clear', {
@@ -271,7 +301,7 @@ async function updateStats() {
     if (progress[k].status === 'correct') correct++;
     else if (progress[k].status === 'wrong') wrong++;
   });
-  $('statTotal').textContent = WORDS.length;
+  $('statTotal').textContent = getActiveWords().length;
   $('statDone').textContent = keys.length;
   $('statCorrect').textContent = correct;
   $('statWrong').textContent = wrong;
@@ -280,7 +310,7 @@ async function updateStats() {
 // ---------- Filter & Session ----------
 async function getFilteredWords() {
   const unit = $('unitFilter').value;
-  let list = WORDS;
+  let list = getActiveWords();
   if (unit !== 'all') list = list.filter(w => String(w.unit) === unit);
   if (state.mode === 'review') {
     const progress = await loadProgress();
@@ -317,7 +347,7 @@ async function switchMode(mode) {
     // 直接从云端/本地获取错题，不依赖 state
     const progress = await loadProgress();
     const wrongSeqs = Object.keys(progress).filter(k => progress[k].status === 'wrong');
-    const words = WORDS.filter(w => wrongSeqs.includes(String(w.seq)));
+    const words = getActiveWords().filter(w => wrongSeqs.includes(String(w.seq)));
     
     if (words.length === 0) {
       $('reviewActions').style.display = 'block';
@@ -428,10 +458,16 @@ function showCurrentWord() {
   const showMeaning = direction === 'cn2en';
 
   // 显示题目（含词性）
+  // 词性标记
+  const posTag = word.pos ? ' <span style="font-size:14px;color:#888;font-weight:400;">[' + word.pos + ']</span>' : '';
+  // 短语标记
+  const isPhrase = word.word.includes(' ') || word.word.includes('-') || word.word.includes('/') || word.word.includes("'");
+  const phraseTag = isPhrase ? ' <span style="font-size:11px;color:#e67e22;border:1px solid #e67e22;border-radius:4px;padding:0 5px;margin-left:4px;">短语</span>' : '';
+  
   if (showMeaning) {
-    $('displayWord').innerHTML = word.meaning + (word.pos ? ' <span style="font-size:14px;color:#888;font-weight:400;">[' + word.pos + ']</span>' : '');
+    $('displayWord').innerHTML = word.meaning + posTag + phraseTag;
   } else {
-    $('displayWord').innerHTML = word.word + (word.pos ? ' <span style="font-size:14px;color:#888;font-weight:400;">[' + word.pos + ']</span>' : '');
+    $('displayWord').innerHTML = word.word + posTag + phraseTag;
   }
   $('displayWord').className = 'word-display' + (showMeaning ? '' : ' meaning-only');
 
@@ -563,7 +599,7 @@ function restartDictation() {
 // ---------- Word List ----------
 async function renderWordList() {
   const unit = $('unitFilter').value;
-  let list = WORDS;
+  let list = getActiveWords();
   if (unit !== 'all') list = list.filter(w => String(w.unit) === unit);
   const progress = await loadProgress();
 
@@ -576,9 +612,11 @@ async function renderWordList() {
       else if (p.status === 'wrong') { statusClass = 'wrong'; statusText = '✗ 错误'; }
     }
     const posTag = w.pos ? ' <span style="color:#999;font-size:12px;">[' + w.pos + ']</span>' : '';
+    const phraseTag = (w.word.includes(' ') || w.word.includes('-') || w.word.includes('/')) ? ' <span style="color:#e67e22;font-size:11px;border:1px solid #e67e22;border-radius:4px;padding:0 4px;margin-left:2px;">短语</span>' : '';
+    const delBtn = '<button onclick="deleteWord(' + w.seq + ')" style="margin-left:8px;padding:2px 8px;border:none;border-radius:4px;background:#fee;color:#e74c3c;cursor:pointer;font-size:12px;">✕</button>';
     html += '<div class="word-item">' +
-      '<div><span class="en">' + w.word + '</span>' + posTag + ' <span class="cn">' + w.meaning + '</span></div>' +
-      '<span class="status-tag ' + statusClass + '">' + statusText + '</span>' +
+      '<div><span class="en">' + w.word + '</span>' + posTag + phraseTag + ' <span class="cn">' + w.meaning + '</span></div>' +
+      '<div>' + '<span class="status-tag ' + statusClass + '">' + statusText + '</span>' + delBtn + '</div>' +
       '</div>';
   });
   $('wordListContainer').innerHTML = html || '<div class="empty-state">暂无单词</div>';
